@@ -6,6 +6,7 @@
 
 - [Features](#features)
 - [Installation](#installation)
+  - [Automatic Installation](#automatic-installation)
 - [Usage](#usage)
   - [Syntax](#syntax)
   - [Options](#options)
@@ -36,7 +37,7 @@
    Save the script to a file named `get`:
 
    ```bash
-   curl -o get https://your-repository-url/get
+   curl -o get https://github.com/MohamedElashri/get/raw/refs/heads/main/get
    ```
 
 2. **Make the Script Executable**
@@ -52,6 +53,14 @@
    ```bash
    sudo mv get /usr/local/bin/
    ```
+
+### Automatic Installation
+
+You can also install the script automatically using the following command:
+
+```bash
+bash <(curl -s https://github.com/MohamedElashri/get/raw/refs/heads/main/install.sh)
+```
 
 ---
 
