@@ -1,0 +1,240 @@
+#!/bin/bash
+
+# -------------------------
+# Function: show_help
+# Description: Displays usage information.
+# -------------------------
+show_help() {
+    echo "Usage:"
+    echo "  get [OPTIONS] PATTERN [in|from] [FILES_OR_DIRS]"
+    echo "  COMMAND | get [OPTIONS] PATTERN"
+    echo
+    echo "Options:"
+    echo "  --ignore-case          Perform case-insensitive matching."
+    echo "  --recursive            Recursively search directories."
+    echo "  --line-numbers         Show line numbers in output."
+    echo "  --invert-match         Select non-matching lines."
+    echo "  --count                Count matching lines."
+    echo "  --whole-word           Match whole words only."
+    echo "  --before-context N     Show N lines before each match."
+    echo "  --after-context N      Show N lines after each match."
+    echo "  --context N            Show N lines around each match."
+    echo "  --exclude PATTERN      Exclude files matching PATTERN."
+    echo "  --exclude-dir PATTERN  Exclude directories matching PATTERN."
+    echo "  --help                 Display this help and exit."
+}
+
+# -------------------------
+# Function: suggest_correction
+# Description: Suggests corrections for mistyped options.
+# -------------------------
+suggest_correction() {
+    local input_option="$1"
+    local -n options_ref="$2"
+    local closest_option=""
+    local min_distance=999
+
+    # Calculate Levenshtein distance
+    levenshtein_distance() {
+        local str1="$1"
+        local str2="$2"
+        local len1=${#str1}
+        local len2=${#str2}
+        local matrix
+
+        for ((i=0; i<=len1; i++)); do
+            matrix[$i,0]=$i
+        done
+        for ((j=0; j<=len2; j++)); do
+            matrix[0,$j]=$j
+        done
+
+        for ((i=1; i<=len1; i++)); do
+            for ((j=1; j<=len2; j++)); do
+                if [[ "${str1:i-1:1}" == "${str2:j-1:1}" ]]; then
+                    cost=0
+                else
+                    cost=1
+                fi
+                matrix[$i,$j]=$(( $(min \
+                    $((matrix[$((i-1)),$j]+1)) \
+                    $((matrix[$i,$((j-1))]+1)) \
+                    $((matrix[$((i-1)),$((j-1))]+cost)) \
+                ) ))
+            done
+        done
+        echo "${matrix[$len1,$len2]}"
+    }
+
+    # Helper function to find minimum of three numbers
+    min() {
+        local m=$1
+        for n in "${@:2}"; do
+            (( n < m )) && m=$n
+        done
+        echo "$m"
+    }
+
+    for option in "${options_ref[@]}"; do
+        distance=$(levenshtein_distance "$input_option" "$option")
+        if (( distance < min_distance )); then
+            min_distance=$distance
+            closest_option=$option
+        fi
+    done
+
+    if (( min_distance <= 3 )); then
+        echo "$closest_option"
+    else
+        echo ""
+    fi
+}
+
+# -------------------------
+# Function: parse_arguments
+# Description: Parses and validates command-line arguments.
+# -------------------------
+parse_arguments() {
+    # Check if input is coming from stdin
+    if [[ -t 0 ]]; then
+        INPUT_FROM_STDIN=false
+    else
+        INPUT_FROM_STDIN=true
+    fi
+
+    # Initialize variables
+    PATTERN=""
+    FILES=()
+    GREP_OPTIONS=()
+    KEYWORD_FOUND=false
+
+    # Valid options mapping
+    declare -A VALID_OPTIONS=(
+        ["--ignore-case"]="-i"
+        ["--recursive"]="-r"
+        ["--line-numbers"]="-n"
+        ["--invert-match"]="-v"
+        ["--count"]="-c"
+        ["--whole-word"]="-w"
+        ["--before-context"]="B"
+        ["--after-context"]="A"
+        ["--context"]="C"
+        ["--exclude"]="--exclude"
+        ["--exclude-dir"]="--exclude-dir"
+    )
+
+    # List of valid options for suggestion
+    VALID_OPTIONS_LIST=("${!VALID_OPTIONS[@]}")
+
+    # Valid keywords
+    KEYWORDS=("in" "from")
+
+    # Handle arguments
+    ARGS=("$@")
+    i=0
+    while [[ $i -lt ${#ARGS[@]} ]]; do
+        arg="${ARGS[$i]}"
+        case "$arg" in
+            --help)
+                show_help
+                exit 0
+                ;;
+            --*)
+                # Option
+                case "$arg" in
+                    --ignore-case|--recursive|--line-numbers|--invert-match|--count|--whole-word)
+                        GREP_OPTIONS+=("${VALID_OPTIONS[$arg]}")
+                        ;;
+                    --before-context|--after-context|--context)
+                        OPTION_FLAG="${VALID_OPTIONS[$arg]}"
+                        i=$((i+1))
+                        if [[ $i -lt ${#ARGS[@]} ]] && [[ "${ARGS[$i]}" =~ ^[0-9]+$ ]]; then
+                            GREP_OPTIONS+=("-$OPTION_FLAG" "${ARGS[$i]}")
+                        else
+                            echo "Error: Option '$arg' requires a numerical argument."
+                            exit 1
+                        fi
+                        ;;
+                    --exclude|--exclude-dir)
+                        OPTION_FLAG="${VALID_OPTIONS[$arg]}"
+                        i=$((i+1))
+                        if [[ $i -lt ${#ARGS[@]} ]] && [[ -n "${ARGS[$i]}" ]]; then
+                            GREP_OPTIONS+=("$OPTION_FLAG=${ARGS[$i]}")
+                        else
+                            echo "Error: Option '$arg' requires an argument."
+                            exit 1
+                        fi
+                        ;;
+                    *)
+                        # Suggest correction for mistyped options
+                        suggested_option=$(suggest_correction "$arg" VALID_OPTIONS_LIST)
+                        if [[ -n "$suggested_option" ]]; then
+                            echo "Error: Unknown option '$arg'. Did you mean '$suggested_option'?"
+                        else
+                            echo "Error: Unknown option '$arg'."
+                        fi
+                        show_help
+                        exit 1
+                        ;;
+                esac
+                ;;
+            *)
+                # Non-option argument
+                if [[ -z "$PATTERN" ]]; then
+                    PATTERN="$arg"
+                elif [[ "$KEYWORD_FOUND" == false && " ${KEYWORDS[@]} " =~ " $arg " ]]; then
+                    KEYWORD_FOUND=true
+                elif [[ "$INPUT_FROM_STDIN" == false ]]; then
+                    FILES+=("$arg")
+                else
+                    echo "Error: Unexpected argument '$arg'"
+                    exit 1
+                fi
+                ;;
+        esac
+        i=$((i+1))
+    done
+
+    if [[ -z "$PATTERN" ]]; then
+        echo "Error: No pattern specified."
+        show_help
+        exit 1
+    fi
+
+    if [[ "$INPUT_FROM_STDIN" == false ]] && [[ ${#FILES[@]} -eq 0 ]]; then
+        echo "Error: No files or directories specified."
+        exit 1
+    fi
+}
+
+# -------------------------
+# Function: build_grep_command
+# Description: Constructs the grep command based on parsed arguments.
+# -------------------------
+build_grep_command() {
+    if [[ "$INPUT_FROM_STDIN" == true ]]; then
+        GREP_COMMAND=(grep "${GREP_OPTIONS[@]}" "$PATTERN")
+    else
+        GREP_COMMAND=(grep "${GREP_OPTIONS[@]}" "$PATTERN" "${FILES[@]}")
+    fi
+}
+
+# -------------------------
+# Function: execute_search
+# Description: Executes the constructed grep command.
+# -------------------------
+execute_search() {
+    "${GREP_COMMAND[@]}"
+}
+
+# -------------------------
+# Main script execution
+# -------------------------
+main() {
+    parse_arguments "$@"
+    build_grep_command
+    execute_search
+}
+
+# Call the main function with all script arguments
+main "$@"
