@@ -10,20 +10,20 @@ show_help() {
     echo "  COMMAND | get [OPTIONS] PATTERN"
     echo
     echo "Options:"
-    echo "  --ignore-case          Perform case-insensitive matching."
-    echo "  --recursive            Recursively search directories."
-    echo "  --line-numbers         Show line numbers in output."
-    echo "  --invert-match         Select non-matching lines."
-    echo "  --count                Count matching lines."
-    echo "  --whole-word           Match whole words only."
-    echo "  --before-context N     Show N lines before each match."
-    echo "  --after-context N      Show N lines after each match."
-    echo "  --context N            Show N lines around each match."
-    echo "  --exclude PATTERN      Exclude files matching PATTERN."
-    echo "  --exclude-dir PATTERN  Exclude directories matching PATTERN."
-    echo "  --color                Show color in output."
-    echo "  --no-color             Do not show color in output."
-    echo "  --help                 Display this help and exit."
+    echo "  -i, --ignore-case          Perform case-insensitive matching."
+    echo "  -r, --recursive            Recursively search directories."
+    echo "  -n, --line-numbers         Show line numbers in output."
+    echo "  -v, --invert-match         Select non-matching lines."
+    echo "  -c, --count                Count matching lines."
+    echo "  -w, --whole-word           Match whole words only."
+    echo "  -B, --before-context N     Show N lines before each match."
+    echo "  -A, --after-context N      Show N lines after each match."
+    echo "  -C, --context N            Show N lines around each match."
+    echo "  -e, --exclude PATTERN      Exclude files matching PATTERN."
+    echo "  -E, --exclude-dir PATTERN  Exclude directories matching PATTERN."
+    echo "  -C, --color                Show color in output."
+    echo "  -N, --no-color             Do not show color in output."
+    echo "  -h, --help                 Display this help and exit."
 }
 
 # -------------------------
@@ -113,20 +113,34 @@ parse_arguments() {
     # Valid options mapping
     declare -A VALID_OPTIONS=(
         ["--ignore-case"]="-i"
+        ["-i"]="-i"
         ["--recursive"]="-r"
+        ["-r"]="-r"
         ["--line-numbers"]="-n"
+        ["-n"]="-n"
         ["--invert-match"]="-v"
+        ["-v"]="-v"
         ["--count"]="-c"
+        ["-c"]="-c"
         ["--whole-word"]="-w"
+        ["-w"]="-w"
         ["--before-context"]="B"
+        ["-B"]="B"
         ["--after-context"]="A"
+        ["-A"]="A"
         ["--context"]="C"
+        ["-C"]="C"
         ["--exclude"]="--exclude"
+        ["-e"]="--exclude"
         ["--exclude-dir"]="--exclude-dir"
+        ["-E"]="--exclude-dir"
         ["--color"]="--color=always"
+        ["-C"]="--color=always"
         ["--no-color"]="--color=never"
+        ["-N"]="--color=never"
+        ["--help"]="--help"
+        ["-h"]="--help"
     )
-
     # List of valid options for suggestion
     VALID_OPTIONS_LIST=("${!VALID_OPTIONS[@]}")
 
@@ -139,48 +153,41 @@ parse_arguments() {
     while [[ $i -lt ${#ARGS[@]} ]]; do
         arg="${ARGS[$i]}"
         case "$arg" in
-            --help)
+            --help|-h)
                 show_help
                 exit 0
                 ;;
-            --*)
+            --*|-*)
                 # Option
-                case "$arg" in
-                    --ignore-case|--recursive|--line-numbers|--invert-match|--count|--whole-word|--color|--no-color)
-                        GREP_OPTIONS+=("${VALID_OPTIONS[$arg]}")
-                        ;;
-                    --before-context|--after-context|--context)
-                        OPTION_FLAG="${VALID_OPTIONS[$arg]}"
-                        i=$((i+1))
-                        if [[ $i -lt ${#ARGS[@]} ]] && [[ "${ARGS[$i]}" =~ ^[0-9]+$ ]]; then
-                            GREP_OPTIONS+=("-$OPTION_FLAG" "${ARGS[$i]}")
-                        else
-                            echo "Error: Option '$arg' requires a numerical argument."
-                            exit 1
-                        fi
-                        ;;
-                    --exclude|--exclude-dir)
-                        OPTION_FLAG="${VALID_OPTIONS[$arg]}"
-                        i=$((i+1))
-                        if [[ $i -lt ${#ARGS[@]} ]] && [[ -n "${ARGS[$i]}" ]]; then
-                            GREP_OPTIONS+=("$OPTION_FLAG=${ARGS[$i]}")
-                        else
-                            echo "Error: Option '$arg' requires an argument."
-                            exit 1
-                        fi
-                        ;;
-                    *)
-                        # Suggest correction for mistyped options
-                        suggested_option=$(suggest_correction "$arg" VALID_OPTIONS_LIST)
-                        if [[ -n "$suggested_option" ]]; then
-                            echo "Error: Unknown option '$arg'. Did you mean '$suggested_option'?"
-                        else
-                            echo "Error: Unknown option '$arg'."
-                        fi
+                if [[ "${VALID_OPTIONS[$arg]}" ]]; then
+                    if [[ "${VALID_OPTIONS[$arg]}" == "--help" ]]; then
                         show_help
+                        exit 0
+                    else
+                        GREP_OPTIONS+=("${VALID_OPTIONS[$arg]}")
+                    fi
+                elif [[ "$arg" == "--before-context" || "$arg" == "--after-context" || "$arg" == "--context" || "$arg" == "-B" || "$arg" == "-A" || "$arg" == "-C" ]]; then
+                    OPTION_FLAG="${VALID_OPTIONS[$arg]}"
+                    i=$((i+1))
+                    if [[ $i -lt ${#ARGS[@]} ]] && [[ "${ARGS[$i]}" =~ ^[0-9]+$ ]]; then
+                        GREP_OPTIONS+=("-$OPTION_FLAG" "${ARGS[$i]}")
+                    else
+                        echo "Error: Option '$arg' requires a numerical argument."
                         exit 1
-                        ;;
-                esac
+                    fi
+                elif [[ "$arg" == "--exclude" || "$arg" == "--exclude-dir" || "$arg" == "-e" || "$arg" == "-E" ]]; then
+                    OPTION_FLAG="${VALID_OPTIONS[$arg]}"
+                    i=$((i+1))
+                    if [[ $i -lt ${#ARGS[@]} ]] && [[ -n "${ARGS[$i]}" ]]; then
+                        GREP_OPTIONS+=("$OPTION_FLAG=${ARGS[$i]}")
+                    else
+                        echo "Error: Option '$arg' requires an argument."
+                        exit 1
+                    fi
+                else
+                    echo "Error: Unknown option '$arg'"
+                    exit 1
+                fi
                 ;;
             *)
                 # Non-option argument
