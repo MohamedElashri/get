@@ -37,7 +37,7 @@
    Save the script to a file named `get`:
 
    ```bash
-   curl -o get https://github.com/MohamedElashri/get/raw/refs/heads/main/get
+   curl -o get https://raw.githubusercontent.com/MohamedElashri/get/refs/heads/main/get
    ```
 
 2. **Make the Script Executable**
