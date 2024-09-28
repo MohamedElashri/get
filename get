@@ -21,6 +21,8 @@ show_help() {
     echo "  --context N            Show N lines around each match."
     echo "  --exclude PATTERN      Exclude files matching PATTERN."
     echo "  --exclude-dir PATTERN  Exclude directories matching PATTERN."
+    echo "  --color                Show color in output."
+    echo "  --no-color             Do not show color in output."
     echo "  --help                 Display this help and exit."
 }
 
@@ -121,6 +123,8 @@ parse_arguments() {
         ["--context"]="C"
         ["--exclude"]="--exclude"
         ["--exclude-dir"]="--exclude-dir"
+        ["--color"]="--color=always"
+        ["--no-color"]="--color=never"
     )
 
     # List of valid options for suggestion
@@ -142,7 +146,7 @@ parse_arguments() {
             --*)
                 # Option
                 case "$arg" in
-                    --ignore-case|--recursive|--line-numbers|--invert-match|--count|--whole-word)
+                    --ignore-case|--recursive|--line-numbers|--invert-match|--count|--whole-word|--color|--no-color)
                         GREP_OPTIONS+=("${VALID_OPTIONS[$arg]}")
                         ;;
                     --before-context|--after-context|--context)
@@ -212,6 +216,20 @@ parse_arguments() {
 # Description: Constructs the grep command based on parsed arguments.
 # -------------------------
 build_grep_command() {
+    # Check if '--color' or '--no-color' is already in GREP_OPTIONS
+    COLOR_OPTION_SET=false
+    for opt in "${GREP_OPTIONS[@]}"; do
+        if [[ "$opt" == "--color=always" || "$opt" == "--color=never" ]]; then
+            COLOR_OPTION_SET=true
+            break
+        fi
+    done
+
+    # Add '--color=auto' if no color option is set
+    if [[ "$COLOR_OPTION_SET" == false ]]; then
+        GREP_OPTIONS+=("--color=auto")
+    fi
+
     if [[ "$INPUT_FROM_STDIN" == true ]]; then
         GREP_COMMAND=(grep "${GREP_OPTIONS[@]}" "$PATTERN")
     else

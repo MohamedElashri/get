@@ -91,7 +91,10 @@ COMMAND | get [OPTIONS] PATTERN
 | `--context N`           | Show N lines around each match.             |
 | `--exclude PATTERN`     | Exclude files matching PATTERN.             |
 | `--exclude-dir PATTERN` | Exclude directories matching PATTERN.       |
+| `--color`               | Show color in output.                       |
+| `--no-color`            | Do not show color in output.                |
 | `--help`                | Display help information and exit.          |
+
 
 ### Examples
 
@@ -184,6 +187,35 @@ get "error" logfile1.txt logfile2.txt
 ```bash
 get "error" in logfile1.txt logfile2.txt
 ```
+
+#### 13. Using Color in Output
+
+This the default behavior and does not need to be specified but in case you want to force color output you can use the `--color` option:
+
+```bash
+get --color "error" logfile.txt
+```
+
+or
+
+```bash
+get --no-color "error" logfile.txt
+```
+
+#### 14. Disable Color in Output
+
+```bash
+get --no-color "error" logfile.txt
+```
+
+#### 15. Display Help Information
+
+```bash
+get --help
+```
+
+
+
 
 ### Notes
 
