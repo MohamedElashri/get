@@ -4,7 +4,6 @@
 
 ## Table of Contents
 
-- [Features](#features)
 - [Installation](#installation)
   - [Automatic Installation](#automatic-installation)
 - [Usage](#usage)
@@ -15,18 +14,6 @@
 - [Extending the Tool](#extending-the-tool)
 - [Contributing](#contributing)
 - [License](#license)
-
----
-
-## Features
-
-- **Human-Readable Syntax**: Use natural language-like commands to search text.
-- **Simplified Options**: Replace complex `grep` flags with easy-to-remember options.
-- **Flexible Argument Order**: Specify options before or after the search pattern.
-- **Optional Keywords**: Use `in`, `from`, or omit the keyword between the pattern and files.
-- **Supports Piped Input**: Seamlessly handle input from other commands.
-- **Error Handling**: Provides helpful error messages and suggestions for mistyped options.
-- **Extensible**: Easily add new features or options.
 
 ---
 
